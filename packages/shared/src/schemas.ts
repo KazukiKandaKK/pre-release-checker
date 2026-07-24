@@ -115,3 +115,96 @@ export const jobSchema = z.object({
   status: z.enum(['waiting', 'active', 'completed', 'failed', 'delayed']),
   progress: z.number().min(0).max(100).optional(),
 });
+
+export const scenarioStepSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('navigate'),
+    url: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('fill'),
+    selector: z.string(),
+    value: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('select'),
+    selector: z.string(),
+    value: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('click'),
+    selector: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('submit'),
+    selector: z.string().optional(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('assertText'),
+    selector: z.string().optional(),
+    text: z.string(),
+    operator: z.enum(['contains', 'exists']).default('contains'),
+    label: z.string().optional(),
+  }),
+]);
+
+export const scenarioInputSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  risk: z.enum(['safe', 'needs-auth', 'destructive']).default('safe'),
+  status: z.enum(['active', 'disabled']).default('active'),
+  baseUrl: z.string(),
+  pageUrl: z.string(),
+  steps: z.array(scenarioStepSchema).min(1),
+});
+
+export const scenarioSchema = scenarioInputSchema.extend({
+  id: z.string(),
+  source: z.string(),
+  runId: z.string().nullable().optional(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export const scenarioRunStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const scenarioRunStepResultSchema = z.object({
+  stepIndex: z.number().int(),
+  status: z.enum(['ok', 'failed', 'skipped']),
+  logs: z.array(z.record(z.any())).default([]),
+  screenshotPath: z.string().nullable().optional(),
+  error: z.string().optional(),
+  durationMs: z.number().int().optional(),
+});
+
+export const scenarioRunResultSchema = z.object({
+  scenarioId: z.string(),
+  stepResults: z.array(scenarioRunStepResultSchema),
+  consoleLogs: z.array(z.record(z.any())).default([]),
+  hasJsError: z.boolean().default(false),
+  hasHttpError: z.boolean().default(false),
+});
+
+export const scenarioRunSchema = z.object({
+  id: z.string(),
+  scenarioId: z.string(),
+  status: scenarioRunStatusSchema,
+  startedAt: z.coerce.date(),
+  finishedAt: z.coerce.date().nullable().optional(),
+  result: scenarioRunResultSchema.nullable().optional(),
+  error: z.string().nullable().optional(),
+});
+
+export const createScenarioRunSchema = z.object({
+  scenarioId: z.string(),
+});

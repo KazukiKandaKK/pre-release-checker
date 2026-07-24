@@ -21,13 +21,14 @@ model Config {
 }
 
 model Run {
-  id             String    @id @default(cuid())
+  id             String     @id @default(cuid())
   status         String
   baseUrl        String
   configSnapshot String // JSON
-  startedAt      DateTime  @default(now())
+  startedAt      DateTime   @default(now())
   finishedAt     DateTime?
   pages          Page[]
+  scenarios      Scenario[]
 }
 
 model Page {
@@ -45,4 +46,38 @@ model Page {
   visitedAt      DateTime @default(now())
 
   @@index([runId])
+}
+
+model Scenario {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  source      String        @default("auto")
+  risk        String        @default("safe")
+  status      String        @default("active")
+  baseUrl     String
+  pageUrl     String
+  steps       String // JSON
+  runId       String?
+  run         Run?          @relation(fields: [runId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  runs        ScenarioRun[]
+
+  @@index([runId])
+  @@index([status])
+  @@index([risk])
+}
+
+model ScenarioRun {
+  id          String    @id @default(cuid())
+  scenarioId  String
+  scenario    Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  status      String
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  result      String?   // JSON
+  error       String?
+
+  @@index([scenarioId])
 }

@@ -44,4 +44,71 @@ describe('API', () => {
       });
     expect(res.status).toBe(400);
   });
+
+  it('POST /api/scenarios creates a scenario and GET /api/scenarios lists it', async () => {
+    const payload = {
+      name: 'Test scenario',
+      description: 'Manual scenario',
+      risk: 'safe',
+      status: 'active',
+      baseUrl: 'https://staging.example.com',
+      pageUrl: 'https://staging.example.com/contact',
+      steps: [{ type: 'navigate' as const, url: 'https://staging.example.com/contact' }],
+    };
+
+    const post = await request(app).post('/api/scenarios').send(payload);
+    expect(post.status).toBe(200);
+    expect(post.body.name).toBe(payload.name);
+    expect(post.body.steps).toHaveLength(1);
+
+    const get = await request(app).get('/api/scenarios');
+    expect(get.status).toBe(200);
+    expect(get.body.some((s: { id: string }) => s.id === post.body.id)).toBe(true);
+  });
+
+  it('GET /api/scenarios/:id returns a scenario', async () => {
+    const scenario = await prisma.scenario.create({
+      data: {
+        name: 'Find me',
+        source: 'auto',
+        risk: 'safe',
+        status: 'active',
+        baseUrl: 'https://staging.example.com',
+        pageUrl: 'https://staging.example.com/',
+        steps: JSON.stringify([{ type: 'navigate', url: 'https://staging.example.com/' }]),
+      },
+    });
+
+    const res = await request(app).get(`/api/scenarios/${scenario.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Find me');
+    expect(res.body.steps[0].type).toBe('navigate');
+  });
+
+  it('GET /api/scenario-runs/:id returns a scenario run', async () => {
+    const scenario = await prisma.scenario.create({
+      data: {
+        name: 'Run test',
+        source: 'auto',
+        risk: 'safe',
+        status: 'active',
+        baseUrl: 'https://staging.example.com',
+        pageUrl: 'https://staging.example.com/',
+        steps: JSON.stringify([{ type: 'navigate', url: 'https://staging.example.com/' }]),
+      },
+    });
+
+    const scenarioRun = await prisma.scenarioRun.create({
+      data: {
+        scenarioId: scenario.id,
+        status: 'completed',
+        result: JSON.stringify({ scenarioId: scenario.id, stepResults: [], consoleLogs: [], hasJsError: false, hasHttpError: false }),
+      },
+    });
+
+    const res = await request(app).get(`/api/scenario-runs/${scenarioRun.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(res.body.scenario.name).toBe('Run test');
+  });
 });

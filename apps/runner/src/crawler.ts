@@ -3,6 +3,7 @@ import { prisma } from 'pre-release-checker-database';
 import { LocalStorage } from 'pre-release-checker-storage';
 import type { CrawlConfig, PageSnapshot } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl, isExcluded, isSameOrigin } from './guards.js';
+import { generateScenariosFromPage } from './scenario-generator.js';
 
 export interface CrawlResult {
   runId: string;
@@ -144,6 +145,12 @@ export async function runCrawl(
         },
       });
       pages.push(pageSnapshot);
+
+      try {
+        await generateScenariosFromPage(page, url, baseUrl, config, runId);
+      } catch (err) {
+        console.error('scenario generation failed for', url, err);
+      }
 
       if (depth < maxDepth) {
         const links = await page
