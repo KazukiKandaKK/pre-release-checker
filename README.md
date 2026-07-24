@@ -35,6 +35,24 @@ npm run dev
 ダッシュボード: http://localhost:5173  
 API: http://localhost:3001
 
+## Docker（本番・社内サーバー用）
+
+```bash
+# .env に APP_MASTER_KEY と ALLOWED_STAGING_ORIGINS を設定
+cp .env.example .env
+# 64文字Hex のマスターキーに変更
+
+# すべてのサービスをビルド＆起動
+docker compose up --build -d
+
+# ダッシュボード: http://localhost
+# API: http://localhost:3001
+```
+
+- `data/` ボリュームに SQLite とスクリーンショットが永続化されます。
+- `migrate` サービスが起動時に `prisma migrate deploy` を自動実行します。
+- Playwright ブラウザを含んだ公式イメージを使用しているため、別途ブラウザのダウンロードは不要です。
+
 ## 機能
 
 - **クロール**: 対象 URL から同一オリジンを BFS クロールし、各ページのスクリーンショット・HTTP エラー・JS コンソールログを収集します。
