@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Config {
+  id              String   @id @default(cuid())
+  baseUrl         String
+  allowedOrigins  String
+  maxDepth        Int      @default(2)
+  concurrency     Int      @default(2)
+  delayMs         Int      @default(500)
+  maxPages        Int      @default(50)
+  excludePatterns String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Run {
+  id             String    @id @default(cuid())
+  status         String
+  baseUrl        String
+  configSnapshot String // JSON
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  pages          Page[]
+}
+
+model Page {
+  id             String   @id @default(cuid())
+  runId          String
+  run            Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  url            String
+  title          String?
+  depth          Int
+  statusCode     Int?
+  hasJsError     Boolean  @default(false)
+  hasHttpError   Boolean  @default(false)
+  consoleLogs    String?  // JSON
+  screenshotPath String?
+  visitedAt      DateTime @default(now())
+
+  @@index([runId])
+}

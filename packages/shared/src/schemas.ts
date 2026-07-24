@@ -1,0 +1,117 @@
+import { z } from 'zod';
+import {
+  DEFAULT_CONCURRENCY,
+  DEFAULT_DELAY_MS,
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_PAGES,
+} from './constants.js';
+
+export const urlSchema = z.string().url();
+
+const commaSeparatedOriginsSchema = z
+  .string()
+  .min(1, '1 つ以上のオリジンを指定してください')
+  .refine(
+    (s) =>
+      s
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean)
+        .every((o) => /^https?:\/\/[^/]+/.test(o)),
+    'origin 形式で入力してください（カンマ区切り）'
+  );
+
+const excludePatternsSchema = z.string().default('');
+
+export const configInputSchema = z.object({
+  baseUrl: urlSchema,
+  allowedOrigins: commaSeparatedOriginsSchema,
+  maxDepth: z.coerce.number().int().min(0).max(5).default(DEFAULT_MAX_DEPTH),
+  concurrency: z.coerce.number().int().min(1).max(10).default(DEFAULT_CONCURRENCY),
+  delayMs: z.coerce.number().int().min(0).max(10000).default(DEFAULT_DELAY_MS),
+  maxPages: z.coerce.number().int().min(1).max(200).default(DEFAULT_MAX_PAGES),
+  excludePatterns: excludePatternsSchema,
+});
+
+export const configSchema = configInputSchema.extend({
+  id: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type ParsedOrigins = string[];
+
+export function parseOrigins(value: string): string[] {
+  return value
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+}
+
+export function parseExcludePatterns(value: string): string[] {
+  return value
+    .split('\n')
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+export const pageSnapshotSchema = z.object({
+  url: z.string(),
+  depth: z.number().int().min(0),
+  title: z.string().nullable().optional(),
+  statusCode: z.number().int().nullable().optional(),
+  hasJsError: z.boolean().default(false),
+  hasHttpError: z.boolean().default(false),
+  consoleLogs: z
+    .array(
+      z.object({
+        level: z.string(),
+        message: z.string(),
+        location: z.string().optional(),
+      })
+    )
+    .default([]),
+  screenshotPath: z.string().nullable().optional(),
+});
+
+export const runStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const runSchema = z.object({
+  id: z.string(),
+  status: runStatusSchema,
+  baseUrl: z.string(),
+  configSnapshot: configSchema.omit({ id: true, createdAt: true, updatedAt: true }),
+  startedAt: z.coerce.date(),
+  finishedAt: z.coerce.date().nullable().optional(),
+});
+
+export const pageSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  url: z.string(),
+  title: z.string().nullable(),
+  depth: z.number().int(),
+  statusCode: z.number().int().nullable(),
+  hasJsError: z.boolean(),
+  hasHttpError: z.boolean(),
+  consoleLogs: z.array(z.record(z.any())).nullable(),
+  screenshotPath: z.string().nullable(),
+  visitedAt: z.coerce.date(),
+});
+
+export const createRunSchema = z.object({
+  baseUrl: urlSchema,
+});
+
+export const jobSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  data: z.record(z.unknown()),
+  status: z.enum(['waiting', 'active', 'completed', 'failed', 'delayed']),
+  progress: z.number().min(0).max(100).optional(),
+});
