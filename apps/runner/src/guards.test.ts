@@ -11,6 +11,10 @@ function makeConfig(overrides: Partial<CrawlConfig> = {}): CrawlConfig {
     delayMs: 0,
     maxPages: 50,
     excludePatterns: '',
+    authType: 'none',
+    scheduleEnabled: false,
+    scheduleCron: '0 9 * * *',
+    scheduleJobType: 'crawl',
     ...overrides,
   };
 }

@@ -38,6 +38,15 @@ export interface ConfigView {
   delayMs: number;
   maxPages: number;
   excludePatterns: string;
+  authType: 'none' | 'cookie' | 'basic' | 'oauth' | 'password';
+  authLoginUrl?: string;
+  authUsername?: string;
+  authPassword?: string;
+  authCookie?: string;
+  authToken?: string;
+  scheduleEnabled: boolean;
+  scheduleCron: string;
+  scheduleJobType: 'crawl' | 'scenarios';
 }
 
 export interface ConfigForm {
@@ -48,6 +57,15 @@ export interface ConfigForm {
   delayMs: number;
   maxPages: number;
   excludePatterns: string;
+  authType: 'none' | 'cookie' | 'basic' | 'oauth' | 'password';
+  authLoginUrl?: string;
+  authUsername?: string;
+  authPassword?: string;
+  authCookie?: string;
+  authToken?: string;
+  scheduleEnabled: boolean;
+  scheduleCron: string;
+  scheduleJobType: 'crawl' | 'scenarios';
 }
 
 export interface Run {

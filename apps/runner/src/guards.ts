@@ -23,13 +23,24 @@ export function isAllowedStagingUrl(url: string, config: CrawlConfig, envOrigins
   return allowed.has(origin);
 }
 
+function matchPattern(url: string, pattern: string): boolean {
+  if (!pattern) return false;
+  const lowerUrl = url.toLowerCase();
+  const lowerPattern = pattern.toLowerCase();
+  if (!lowerPattern.includes('*') && !lowerPattern.includes('?')) {
+    return lowerUrl.includes(lowerPattern);
+  }
+  const regex = new RegExp(
+    '^' + lowerPattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
+  );
+  return regex.test(lowerUrl);
+}
+
 export function isExcluded(url: string, config: CrawlConfig): boolean {
-  const lower = url.toLowerCase();
   const userPatterns = parseExcludePatterns(config.excludePatterns);
   const patterns = [...DESTRUCTIVE_SUBSTRINGS, ...userPatterns];
   for (const pattern of patterns) {
-    if (!pattern) continue;
-    if (lower.includes(pattern.toLowerCase())) return true;
+    if (matchPattern(url, pattern)) return true;
   }
   return false;
 }

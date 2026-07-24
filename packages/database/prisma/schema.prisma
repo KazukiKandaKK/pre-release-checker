@@ -8,16 +8,25 @@ datasource db {
 }
 
 model Config {
-  id              String   @id @default(cuid())
-  baseUrl         String
-  allowedOrigins  String
-  maxDepth        Int      @default(2)
-  concurrency     Int      @default(2)
-  delayMs         Int      @default(500)
-  maxPages        Int      @default(50)
-  excludePatterns String   @default("")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  baseUrl              String
+  allowedOrigins       String
+  maxDepth             Int      @default(2)
+  concurrency          Int      @default(2)
+  delayMs              Int      @default(500)
+  maxPages             Int      @default(50)
+  excludePatterns      String   @default("")
+  authType             String   @default("none")
+  authLoginUrl         String?
+  authUsername         String?
+  authPassword         String?
+  authCookie           String?
+  authToken            String?
+  scheduleEnabled      Boolean  @default(false)
+  scheduleCron         String   @default("0 9 * * *")
+  scheduleJobType      String   @default("crawl")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model Run {
