@@ -151,6 +151,34 @@ export const scenarioStepSchema = z.discriminatedUnion('type', [
     operator: z.enum(['contains', 'exists']).default('contains'),
     label: z.string().optional(),
   }),
+  z.object({
+    type: z.literal('reload'),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('goBack'),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('goForward'),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('rapidClick'),
+    selector: z.string(),
+    times: z.coerce.number().int().min(1).max(50).default(3),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('clear'),
+    selector: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('wait'),
+    durationMs: z.coerce.number().int().min(0).max(60000).default(1000),
+    label: z.string().optional(),
+  }),
 ]);
 
 export const scenarioInputSchema = z.object({

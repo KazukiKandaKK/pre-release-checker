@@ -98,12 +98,14 @@ export interface ScenarioForm {
 }
 
 export interface ScenarioStep {
-  type: 'navigate' | 'fill' | 'select' | 'click' | 'submit' | 'assertText';
+  type: 'navigate' | 'fill' | 'select' | 'click' | 'submit' | 'assertText' | 'reload' | 'goBack' | 'goForward' | 'rapidClick' | 'clear' | 'wait';
   url?: string;
   selector?: string;
   value?: string;
   text?: string;
   operator?: 'contains' | 'exists';
+  times?: number;
+  durationMs?: number;
   label?: string;
 }
 

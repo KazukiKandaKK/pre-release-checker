@@ -70,6 +70,18 @@ function StepDescription({ step }: { step: ScenarioStep }) {
       return <span>送信: {step.label || step.selector}</span>;
     case 'assertText':
       return <span>確認: {step.operator === 'contains' ? `contains "${step.text}"` : `exists text`}</span>;
+    case 'reload':
+      return <span>リロード</span>;
+    case 'goBack':
+      return <span>戻る</span>;
+    case 'goForward':
+      return <span>進む</span>;
+    case 'rapidClick':
+      return <span>連打: {step.label || step.selector} x{step.times}</span>;
+    case 'clear':
+      return <span>クリア: {step.label || step.selector}</span>;
+    case 'wait':
+      return <span>待機: {step.durationMs}ms</span>;
     default:
       return <span>unknown step</span>;
   }
