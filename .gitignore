@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+*.log
+.env
+.env.local
+data
+.DS_Store
+coverage
+*.sqlite
+*.db
+test.db
+test-storage
+tmp-test-storage
+test-site
+.cache
+tmp
