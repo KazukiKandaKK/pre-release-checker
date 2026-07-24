@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, type ScenarioRun } from '../api/client.js';
+import { api, type Finding, type ScenarioRun } from '../api/client.js';
 
 export default function ScenarioRunDetail() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +48,21 @@ export default function ScenarioRunDetail() {
           </p>
         )}
       </div>
+
+      {run.findings && run.findings.length > 0 && (
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-xl font-semibold mb-3">検出された問題</h3>
+          <div className="space-y-2">
+            {(run.findings as Finding[]).map((f, idx) => (
+              <div key={idx} className="p-3 rounded bg-red-50 text-red-900">
+                <p className="font-medium">[{f.severity}] {f.title}</p>
+                <p className="text-sm">{f.description}</p>
+                {f.isNew && <span className="text-xs font-semibold">NEW</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {run.result && (
         <>

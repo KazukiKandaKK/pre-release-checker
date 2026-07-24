@@ -25,6 +25,15 @@ model Config {
   scheduleEnabled      Boolean  @default(false)
   scheduleCron         String   @default("0 9 * * *")
   scheduleJobType      String   @default("crawl")
+  mailEnabled          Boolean  @default(false)
+  mailHost             String?
+  mailPort             Int      @default(587)
+  mailSecure           Boolean  @default(false)
+  mailUser             String?
+  mailFrom             String?
+  mailTo               String?
+  mailPassword         String?
+  visualDiffThreshold  Float    @default(0.05)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -34,6 +43,7 @@ model Run {
   status         String
   baseUrl        String
   configSnapshot String // JSON
+  findings       String?    // JSON
   startedAt      DateTime   @default(now())
   finishedAt     DateTime?
   pages          Page[]
@@ -52,6 +62,9 @@ model Page {
   hasHttpError   Boolean  @default(false)
   consoleLogs    String?  // JSON
   screenshotPath String?
+  diffPath       String?
+  diffRatio      Float?
+  hasVisualDiff  Boolean  @default(false)
   visitedAt      DateTime @default(now())
 
   @@index([runId])
@@ -86,6 +99,7 @@ model ScenarioRun {
   startedAt   DateTime  @default(now())
   finishedAt  DateTime?
   result      String?   // JSON
+  findings    String?   // JSON
   error       String?
 
   @@index([scenarioId])

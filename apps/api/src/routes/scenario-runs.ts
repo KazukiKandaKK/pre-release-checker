@@ -6,6 +6,15 @@ export const scenarioRunsRouter = Router();
 
 const storage = new LocalStorage(process.env.STORAGE_LOCAL_PATH || '../../data/storage');
 
+function parseJsonField(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 scenarioRunsRouter.get('/:id', async (req, res, next) => {
   try {
     const row = await prisma.scenarioRun.findUnique({
@@ -18,7 +27,8 @@ scenarioRunsRouter.get('/:id', async (req, res, next) => {
     }
     res.json({
       ...row,
-      result: row.result ? JSON.parse(row.result) : null,
+      result: parseJsonField(row.result),
+      findings: parseJsonField(row.findings),
       scenario: row.scenario ? { ...row.scenario, steps: JSON.parse(row.scenario.steps) } : null,
     });
   } catch (err) {

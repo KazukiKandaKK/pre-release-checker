@@ -14,6 +14,7 @@ import {
 import type { Config, Scenario } from 'pre-release-checker-shared';
 import { runCrawl } from './crawler.js';
 import { runScenario } from './scenario-runner.js';
+import { sendMailReport } from './mailer.js';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -53,8 +54,11 @@ async function main() {
         data: {
           status: result.error ? runStatusSchema.Enum.failed : runStatusSchema.Enum.completed,
           finishedAt: new Date(),
+          findings: result.findings ? JSON.stringify(result.findings) : null,
         },
       });
+
+      await sendMailReport(config, `クロール ${baseUrl}`, result.findings ?? []);
 
       if (result.error) {
         throw new Error(result.error);
@@ -77,7 +81,7 @@ async function main() {
         data: { status: scenarioRunStatusSchema.Enum.running },
       });
 
-      const { result, error } = await runScenario(
+      const { result, findings, error } = await runScenario(
         { ...scenario, steps: JSON.parse(scenario.steps) } as unknown as Scenario,
         scenarioRunId,
         config
@@ -89,9 +93,12 @@ async function main() {
           status: error ? scenarioRunStatusSchema.Enum.failed : scenarioRunStatusSchema.Enum.completed,
           finishedAt: new Date(),
           result: JSON.stringify(result),
+          findings: findings ? JSON.stringify(findings) : null,
           error: error ?? null,
         },
       });
+
+      await sendMailReport(config, `シナリオ ${scenario.name}`, findings ?? []);
 
       if (error) throw new Error(error);
     },

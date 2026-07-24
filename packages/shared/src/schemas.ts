@@ -42,6 +42,15 @@ export const configInputSchema = z.object({
   scheduleEnabled: z.coerce.boolean().default(false),
   scheduleCron: z.string().default('0 9 * * *'),
   scheduleJobType: z.enum(['crawl', 'scenarios']).default('crawl'),
+  mailEnabled: z.coerce.boolean().default(false),
+  mailHost: z.string().optional().or(z.literal('')),
+  mailPort: z.coerce.number().int().min(1).max(65535).default(587),
+  mailSecure: z.coerce.boolean().default(false),
+  mailUser: z.string().optional(),
+  mailFrom: z.string().optional(),
+  mailTo: z.string().optional(),
+  mailPassword: z.string().optional(),
+  visualDiffThreshold: z.coerce.number().min(0).max(1).default(0.05),
 });
 
 export const configSchema = configInputSchema.extend({
@@ -83,6 +92,9 @@ export const pageSnapshotSchema = z.object({
     )
     .default([]),
   screenshotPath: z.string().nullable().optional(),
+  diffPath: z.string().nullable().optional(),
+  diffRatio: z.number().nullable().optional(),
+  hasVisualDiff: z.boolean().default(false),
 });
 
 export const runStatusSchema = z.enum([
@@ -92,11 +104,29 @@ export const runStatusSchema = z.enum([
   'failed',
 ]);
 
+export const findingSeveritySchema = z.enum(['Critical', 'High', 'Medium', 'Low']);
+
+export const findingCategorySchema = z.enum(['http', 'js', 'visual', 'scenario']);
+
+export const findingSchema = z.object({
+  category: findingCategorySchema,
+  severity: findingSeveritySchema,
+  title: z.string(),
+  url: z.string().optional(),
+  description: z.string(),
+  screenshotPath: z.string().nullable().optional(),
+  diffPath: z.string().nullable().optional(),
+  isNew: z.boolean().default(true),
+});
+
+export type Finding = z.infer<typeof findingSchema>;
+
 export const runSchema = z.object({
   id: z.string(),
   status: runStatusSchema,
   baseUrl: z.string(),
   configSnapshot: configSchema.omit({ id: true, createdAt: true, updatedAt: true }),
+  findings: z.array(findingSchema).nullable().optional(),
   startedAt: z.coerce.date(),
   finishedAt: z.coerce.date().nullable().optional(),
 });
@@ -112,6 +142,9 @@ export const pageSchema = z.object({
   hasHttpError: z.boolean(),
   consoleLogs: z.array(z.record(z.any())).nullable(),
   screenshotPath: z.string().nullable(),
+  diffPath: z.string().nullable().optional(),
+  diffRatio: z.number().nullable().optional(),
+  hasVisualDiff: z.boolean().default(false),
   visitedAt: z.coerce.date(),
 });
 
@@ -241,6 +274,7 @@ export const scenarioRunSchema = z.object({
   startedAt: z.coerce.date(),
   finishedAt: z.coerce.date().nullable().optional(),
   result: scenarioRunResultSchema.nullable().optional(),
+  findings: z.array(findingSchema).nullable().optional(),
   error: z.string().nullable().optional(),
 });
 
