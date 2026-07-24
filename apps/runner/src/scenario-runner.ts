@@ -139,17 +139,19 @@ async function executeStep(
         await page.locator(step.selector).click();
         break;
       case 'submit': {
-        const waitForNav = page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
         if (step.selector) {
           const buttons = page.locator(step.selector);
           const count = await buttons.count();
           if (count > 0) {
+            const waitForNav = page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
             await Promise.all([waitForNav, buttons.first().click()]);
           } else {
-            await Promise.all([waitForNav, page.keyboard.press('Enter')]);
+            await page.keyboard.press('Enter');
+            await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
           }
         } else {
-          await Promise.all([waitForNav, page.keyboard.press('Enter')]);
+          await page.keyboard.press('Enter');
+          await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
         }
         break;
       }
@@ -171,6 +173,28 @@ async function executeStep(
             throw new Error(`Expected text "${step.text}" not found in page`);
           }
         }
+        break;
+      case 'reload':
+        await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+        break;
+      case 'goBack':
+        await page.goBack({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
+        break;
+      case 'goForward':
+        await page.goForward({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
+        break;
+      case 'rapidClick': {
+        const target = page.locator(step.selector).first();
+        for (let i = 0; i < step.times; i++) {
+          await target.click().catch(() => {});
+        }
+        break;
+      }
+      case 'clear':
+        await page.locator(step.selector).fill('');
+        break;
+      case 'wait':
+        await new Promise((resolve) => setTimeout(resolve, step.durationMs));
         break;
       default:
         break;

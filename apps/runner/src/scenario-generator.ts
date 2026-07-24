@@ -114,46 +114,118 @@ export async function generateScenariosFromPage(
       risk = 'needs-auth';
     }
 
-    const steps: ScenarioStep[] = [{ type: 'navigate', url: pageUrl }];
+    const baseName = `Form on ${new URL(pageUrl).pathname || pageUrl}`;
 
-    for (const input of form.inputs) {
-      const value = inferInputValue(input);
-      if (value === null) continue;
-      if (input.isSelect) {
-        steps.push({ type: 'select', selector: input.selector, value, label: input.name || input.type });
-      } else {
-        steps.push({ type: 'fill', selector: input.selector, value, label: input.name || input.type });
-      }
-    }
-
-    steps.push({ type: 'submit', selector: form.selector, label: 'submit' });
-
-    const input = scenarioInputSchema.parse({
-      name: `Form on ${new URL(pageUrl).pathname || pageUrl}`,
-      description: `Auto-generated scenario for form with action ${form.action}`,
+    const normalSteps = buildFillSteps(form.inputs, 'normal').concat([{ type: 'submit' as const, selector: form.selector, label: 'submit' }]);
+    scenarios.push(await saveScenario({
+      name: baseName,
+      description: `Auto-generated normal scenario for form with action ${form.action}`,
       risk,
       status: risk === 'safe' ? 'active' : 'disabled',
       baseUrl,
       pageUrl,
-      steps,
-    });
+      steps: [{ type: 'navigate' as const, url: pageUrl }, ...normalSteps],
+    }, runId));
 
-    const row = await prisma.scenario.create({
-      data: {
-        ...input,
-        steps: JSON.stringify(input.steps),
-        source: 'auto',
-        runId,
-      },
-    });
+    if (risk !== 'safe') continue;
 
-    scenarios.push(scenarioSchema.parse({ ...row, steps: JSON.parse(row.steps) }));
+    const emptySteps = buildFillSteps(form.inputs, 'empty').concat([{ type: 'submit' as const, selector: form.selector, label: 'submit' }]);
+    scenarios.push(await saveScenario({
+      name: `Empty values: ${baseName}`,
+      description: `Abnormal data scenario with empty values for form ${form.action}`,
+      risk,
+      status: 'active',
+      baseUrl,
+      pageUrl,
+      steps: [{ type: 'navigate' as const, url: pageUrl }, ...emptySteps],
+    }, runId));
+
+    const invalidSteps = buildFillSteps(form.inputs, 'invalid').concat([{ type: 'submit' as const, selector: form.selector, label: 'submit' }]);
+    scenarios.push(await saveScenario({
+      name: `Invalid values: ${baseName}`,
+      description: `Abnormal data scenario with invalid values for form ${form.action}`,
+      risk,
+      status: 'active',
+      baseUrl,
+      pageUrl,
+      steps: [{ type: 'navigate' as const, url: pageUrl }, ...invalidSteps],
+    }, runId));
+
+    const doubleSubmitSteps = buildFillSteps(form.inputs, 'normal').concat([
+      { type: 'submit' as const, selector: form.selector, label: 'submit' },
+      { type: 'wait' as const, durationMs: 300, label: 'wait' },
+      { type: 'navigate' as const, url: pageUrl, label: 'return to form' },
+      { type: 'wait' as const, durationMs: 300, label: 'wait' },
+      ...buildFillSteps(form.inputs, 'normal'),
+      { type: 'submit' as const, selector: form.selector, label: 'submit again' },
+    ]);
+    scenarios.push(await saveScenario({
+      name: `Double submit: ${baseName}`,
+      description: `Abnormal operation scenario: submit the form twice for ${form.action}`,
+      risk,
+      status: 'active',
+      baseUrl,
+      pageUrl,
+      steps: [{ type: 'navigate' as const, url: pageUrl }, ...doubleSubmitSteps],
+    }, runId));
+
+    const backAndResubmitSteps = buildFillSteps(form.inputs, 'normal').concat([
+      { type: 'submit' as const, selector: form.selector, label: 'submit' },
+      { type: 'wait' as const, durationMs: 300, label: 'wait' },
+      { type: 'goBack' as const, label: 'back' },
+      { type: 'wait' as const, durationMs: 300, label: 'wait' },
+      { type: 'submit' as const, selector: form.selector, label: 'resubmit' },
+    ]);
+    scenarios.push(await saveScenario({
+      name: `Back and resubmit: ${baseName}`,
+      description: `Abnormal operation scenario: submit, go back, and resubmit for ${form.action}`,
+      risk,
+      status: 'active',
+      baseUrl,
+      pageUrl,
+      steps: [{ type: 'navigate' as const, url: pageUrl }, ...backAndResubmitSteps],
+    }, runId));
   }
 
   return scenarios;
 }
 
-function inferInputValue(input: RawInput): string | null {
+function buildFillSteps(inputs: RawInput[], variant: 'normal' | 'empty' | 'invalid'): ScenarioStep[] {
+  const steps: ScenarioStep[] = [];
+  for (const input of inputs) {
+    const value = variant === 'normal' ? inferNormalValue(input) : inferAbnormalValue(input, variant);
+    if (value === null) continue;
+    if (input.isSelect) {
+      steps.push({ type: 'select', selector: input.selector, value, label: input.name || input.type });
+    } else {
+      steps.push({ type: 'fill', selector: input.selector, value, label: input.name || input.type });
+    }
+  }
+  return steps;
+}
+
+async function saveScenario(input: {
+  name: string;
+  description: string;
+  risk: Scenario['risk'];
+  status: 'active' | 'disabled';
+  baseUrl: string;
+  pageUrl: string;
+  steps: ScenarioStep[];
+}, runId: string): Promise<Scenario> {
+  const parsed = scenarioInputSchema.parse(input);
+  const row = await prisma.scenario.create({
+    data: {
+      ...parsed,
+      steps: JSON.stringify(parsed.steps),
+      source: 'auto',
+      runId,
+    },
+  });
+  return scenarioSchema.parse({ ...row, steps: JSON.parse(row.steps) });
+}
+
+function inferNormalValue(input: RawInput): string | null {
   if (input.isSelect) return '1';
   if (input.type === 'email') return 'test@example.com';
   if (input.type === 'password') return 'TestPassword123!';
@@ -170,6 +242,22 @@ function inferInputValue(input: RawInput): string | null {
       if (lower.includes('name')) return 'テスト太郎';
     }
     return 'テスト';
+  }
+  return null;
+}
+
+function inferAbnormalValue(input: RawInput, variant: 'empty' | 'invalid'): string | null {
+  if (input.isSelect) return variant === 'empty' ? '1' : '1';
+  if (variant === 'empty') return '';
+
+  if (input.type === 'email') return 'not-an-email';
+  if (input.type === 'password') return '123';
+  if (input.type === 'tel') return 'abc';
+  if (input.type === 'url') return 'not-a-url';
+  if (input.type === 'number') return '-99999999999999999999';
+  if (input.type === 'search') return '"><script>alert(1)</script>';
+  if (input.type === 'textarea' || input.type === 'text') {
+    return "'; DROP TABLE users; -- 🍣<script>alert('xss')</script>";
   }
   return null;
 }
