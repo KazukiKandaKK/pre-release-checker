@@ -5,11 +5,13 @@ import type { CrawlConfig, PageSnapshot } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl, isExcluded, isSameOrigin } from './guards.js';
 import { generateScenariosFromPage } from './scenario-generator.js';
 import { authenticateContext, performFormLogin } from './auth.js';
+import { buildPageFindings, computePageDiffs, markNewFindings } from './findings.js';
 
 export interface CrawlResult {
   runId: string;
   baseUrl: string;
   pages: PageSnapshot[];
+  findings?: import('pre-release-checker-shared').Finding[];
   error?: string;
 }
 
@@ -137,6 +139,7 @@ export async function runCrawl(
         hasHttpError,
         consoleLogs,
         screenshotPath,
+        hasVisualDiff: false,
       };
 
       await prisma.page.create({
@@ -191,5 +194,19 @@ export async function runCrawl(
     await browser.close();
   }
 
-  return { runId, baseUrl, pages };
+  const pagesWithDiff = await computePageDiffs(runId, pages, baseUrl, config.visualDiffThreshold ?? 0.05);
+  for (const page of pagesWithDiff) {
+    await prisma.page.updateMany({
+      where: { runId, url: page.url },
+      data: {
+        diffPath: page.diffPath ?? null,
+        diffRatio: page.diffRatio ?? null,
+        hasVisualDiff: page.hasVisualDiff ?? false,
+      },
+    });
+  }
+
+  const findings = await markNewFindings(buildPageFindings(pagesWithDiff), baseUrl, runId);
+
+  return { runId, baseUrl, pages: pagesWithDiff, findings };
 }

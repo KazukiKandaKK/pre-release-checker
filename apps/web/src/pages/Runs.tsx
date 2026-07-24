@@ -21,6 +21,7 @@ export default function Runs() {
               <th className="px-4 py-2">ID</th>
               <th className="px-4 py-2">状態</th>
               <th className="px-4 py-2">ベース URL</th>
+              <th className="px-4 py-2">Findings</th>
               <th className="px-4 py-2">開始時刻</th>
               <th className="px-4 py-2">終了時刻</th>
             </tr>
@@ -35,13 +36,14 @@ export default function Runs() {
                 </td>
                 <td className="px-4 py-2">{run.status}</td>
                 <td className="px-4 py-2 truncate max-w-xs">{run.baseUrl}</td>
+                <td className="px-4 py-2">{run.findings ? run.findings.length : '-'}</td>
                 <td className="px-4 py-2">{new Date(run.startedAt).toLocaleString()}</td>
                 <td className="px-4 py-2">{run.finishedAt ? new Date(run.finishedAt).toLocaleString() : '-'}</td>
               </tr>
             ))}
             {runs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-4 text-gray-500">
+                <td colSpan={6} className="px-4 py-4 text-gray-500">
                   実行履歴がありません
                 </td>
               </tr>

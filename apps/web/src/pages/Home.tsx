@@ -18,6 +18,15 @@ const defaultForm: ConfigForm = {
   scheduleEnabled: false,
   scheduleCron: '0 9 * * *',
   scheduleJobType: 'crawl',
+  mailEnabled: false,
+  mailHost: '',
+  mailPort: 587,
+  mailSecure: false,
+  mailUser: '',
+  mailFrom: '',
+  mailTo: '',
+  mailPassword: '',
+  visualDiffThreshold: 0.05,
 };
 
 export default function Home() {
@@ -250,6 +259,106 @@ export default function Home() {
                 <option value="scenarios">全シナリオ</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4 border-t pt-4">
+          <h3 className="text-lg font-medium">メール通知（SMTP）</h3>
+          <div className="flex items-center space-x-2">
+            <input
+              id="mailEnabled"
+              type="checkbox"
+              checked={form.mailEnabled}
+              onChange={(e) => update('mailEnabled', e.target.checked)}
+            />
+            <label htmlFor="mailEnabled" className="text-sm font-medium">
+              メール通知を有効にする
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">SMTP ホスト</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={form.mailHost}
+                onChange={(e) => update('mailHost', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">ポート</label>
+              <input
+                type="number"
+                min={1}
+                max={65535}
+                className="w-full border rounded px-3 py-2"
+                value={form.mailPort}
+                onChange={(e) => update('mailPort', Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">ユーザー名</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={form.mailUser}
+                onChange={(e) => update('mailUser', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">パスワード</label>
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                value={form.mailPassword}
+                onChange={(e) => update('mailPassword', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">From</label>
+              <input
+                type="email"
+                className="w-full border rounded px-3 py-2"
+                value={form.mailFrom}
+                onChange={(e) => update('mailFrom', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">To（カンマ区切り）</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={form.mailTo}
+                onChange={(e) => update('mailTo', e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              id="mailSecure"
+              type="checkbox"
+              checked={form.mailSecure}
+              onChange={(e) => update('mailSecure', e.target.checked)}
+            />
+            <label htmlFor="mailSecure" className="text-sm font-medium">
+              TLS（secure）を使用
+            </label>
+          </div>
+        </div>
+
+        <div className="space-y-4 border-t pt-4">
+          <h3 className="text-lg font-medium">ビジュアル差分</h3>
+          <div>
+            <label className="block text-sm font-medium mb-1">差分判定閾値（0〜1）</label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              className="w-full border rounded px-3 py-2"
+              value={form.visualDiffThreshold}
+              onChange={(e) => update('visualDiffThreshold', Number(e.target.value))}
+            />
           </div>
         </div>
 

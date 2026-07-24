@@ -15,6 +15,10 @@ function makeConfig(overrides: Partial<CrawlConfig> = {}): CrawlConfig {
     scheduleEnabled: false,
     scheduleCron: '0 9 * * *',
     scheduleJobType: 'crawl',
+    mailEnabled: false,
+    mailPort: 587,
+    mailSecure: false,
+    visualDiffThreshold: 0.05,
     ...overrides,
   };
 }

@@ -4,6 +4,7 @@ import type { CrawlConfig, Scenario, ScenarioRunResult, ScenarioRunStepResult, S
 import { scenarioRunResultSchema } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl } from './guards.js';
 import { authenticateContext, performFormLogin } from './auth.js';
+import { buildScenarioFindings } from './findings.js';
 
 interface ConsoleLog {
   level: string;
@@ -15,7 +16,7 @@ export async function runScenario(
   scenario: Scenario,
   scenarioRunId: string,
   config: CrawlConfig
-): Promise<{ result: ScenarioRunResult; error?: string }> {
+): Promise<{ result: ScenarioRunResult; findings?: import('pre-release-checker-shared').Finding[]; error?: string }> {
   const envOrigins = process.env.ALLOWED_STAGING_ORIGINS?.split(',');
   if (!isAllowedStagingUrl(scenario.baseUrl, config, envOrigins)) {
     return {
@@ -67,6 +68,7 @@ export async function runScenario(
   });
 
   const stepResults: ScenarioRunStepResult[] = [];
+  let caughtError: string | undefined;
 
   try {
     for (let i = 0; i < scenario.steps.length; i++) {
@@ -81,30 +83,20 @@ export async function runScenario(
       }
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      result: scenarioRunResultSchema.parse({
-        scenarioId: scenario.id,
-        stepResults,
-        consoleLogs,
-        hasJsError,
-        hasHttpError,
-      }),
-      error: message,
-    };
+    caughtError = err instanceof Error ? err.message : String(err);
   } finally {
     await browser.close();
   }
 
-  return {
-    result: scenarioRunResultSchema.parse({
-      scenarioId: scenario.id,
-      stepResults,
-      consoleLogs,
-      hasJsError,
-      hasHttpError,
-    }),
-  };
+  const result = scenarioRunResultSchema.parse({
+    scenarioId: scenario.id,
+    stepResults,
+    consoleLogs,
+    hasJsError,
+    hasHttpError,
+  });
+  const findings = buildScenarioFindings(scenario.id, scenario.name, scenario.pageUrl, result);
+  return { result, findings, error: caughtError };
 }
 
 async function executeStep(

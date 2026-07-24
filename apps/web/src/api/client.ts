@@ -20,6 +20,7 @@ export const api = {
   getRun: (id: string) => request<Run & { pages: Page[] }>(`/api/runs/${id}`),
   getRunPages: (id: string) => request<Page[]>(`/api/runs/${id}/pages`),
   getScreenshotUrl: (runId: string, pageId: string) => `${API_BASE}/api/runs/${runId}/pages/${pageId}/screenshot`,
+  getDiffUrl: (runId: string, pageId: string) => `${API_BASE}/api/runs/${runId}/pages/${pageId}/diff`,
 
   getScenarios: () => request<Scenario[]>('/api/scenarios'),
   getScenario: (id: string) => request<Scenario>(`/api/scenarios/${id}`),
@@ -47,6 +48,15 @@ export interface ConfigView {
   scheduleEnabled: boolean;
   scheduleCron: string;
   scheduleJobType: 'crawl' | 'scenarios';
+  mailEnabled: boolean;
+  mailHost?: string;
+  mailPort: number;
+  mailSecure: boolean;
+  mailUser?: string;
+  mailFrom?: string;
+  mailTo?: string;
+  mailPassword?: string;
+  visualDiffThreshold: number;
 }
 
 export interface ConfigForm {
@@ -66,6 +76,26 @@ export interface ConfigForm {
   scheduleEnabled: boolean;
   scheduleCron: string;
   scheduleJobType: 'crawl' | 'scenarios';
+  mailEnabled: boolean;
+  mailHost?: string;
+  mailPort: number;
+  mailSecure: boolean;
+  mailUser?: string;
+  mailFrom?: string;
+  mailTo?: string;
+  mailPassword?: string;
+  visualDiffThreshold: number;
+}
+
+export interface Finding {
+  category: 'http' | 'js' | 'visual' | 'scenario';
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  title: string;
+  url?: string;
+  description: string;
+  screenshotPath?: string | null;
+  diffPath?: string | null;
+  isNew?: boolean;
 }
 
 export interface Run {
@@ -74,6 +104,7 @@ export interface Run {
   baseUrl: string;
   startedAt: string;
   finishedAt?: string;
+  findings?: Finding[] | null;
 }
 
 export interface Page {
@@ -85,8 +116,11 @@ export interface Page {
   statusCode: number | null;
   hasJsError: boolean;
   hasHttpError: boolean;
+  hasVisualDiff: boolean;
+  diffRatio: number | null;
   consoleLogs: unknown[] | null;
   screenshotPath: string | null;
+  diffPath: string | null;
   visitedAt: string;
 }
 
@@ -134,6 +168,7 @@ export interface ScenarioRun {
   startedAt: string;
   finishedAt?: string;
   result?: ScenarioRunResult;
+  findings?: Finding[] | null;
   error?: string;
 }
 
