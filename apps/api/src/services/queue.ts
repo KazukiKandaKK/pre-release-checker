@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
-import { CRAWL_JOB_NAME } from 'pre-release-checker-shared';
+import { CRAWL_JOB_NAME, SCENARIO_JOB_NAME } from 'pre-release-checker-shared';
 import type { Config } from 'pre-release-checker-shared';
 
 function getRedis() {
@@ -18,9 +18,23 @@ export function getCrawlQueue(): Queue {
   return crawlQueue;
 }
 
+let scenarioQueue: Queue | null = null;
+export function getScenarioQueue(): Queue {
+  if (!scenarioQueue) {
+    scenarioQueue = new Queue(SCENARIO_JOB_NAME, { connection: getRedis() });
+  }
+  return scenarioQueue;
+}
+
 export interface CrawlJobData {
   runId: string;
   baseUrl: string;
+  configSnapshot: Config;
+}
+
+export interface ScenarioJobData {
+  scenarioRunId: string;
+  scenarioId: string;
   configSnapshot: Config;
 }
 
@@ -30,5 +44,14 @@ export async function enqueueCrawl(runId: string, baseUrl: string, configSnapsho
     baseUrl,
     configSnapshot,
   } as CrawlJobData);
+  return job.id;
+}
+
+export async function enqueueScenario(scenarioRunId: string, scenarioId: string, configSnapshot: Config) {
+  const job = await getScenarioQueue().add(SCENARIO_JOB_NAME, {
+    scenarioRunId,
+    scenarioId,
+    configSnapshot,
+  } as ScenarioJobData);
   return job.id;
 }

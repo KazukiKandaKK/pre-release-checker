@@ -2,6 +2,9 @@ import { Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home.js';
 import Runs from './pages/Runs.js';
 import RunDetail from './pages/RunDetail.js';
+import Scenarios from './pages/Scenarios.js';
+import ScenarioDetail from './pages/ScenarioDetail.js';
+import ScenarioRunDetail from './pages/ScenarioRunDetail.js';
 
 function App() {
   return (
@@ -16,6 +19,9 @@ function App() {
             <Link to="/runs" className="hover:underline">
               実行履歴
             </Link>
+            <Link to="/scenarios" className="hover:underline">
+              シナリオ
+            </Link>
           </nav>
         </div>
       </header>
@@ -24,6 +30,9 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunDetail />} />
+          <Route path="/scenarios" element={<Scenarios />} />
+          <Route path="/scenarios/:id" element={<ScenarioDetail />} />
+          <Route path="/scenario-runs/:id" element={<ScenarioRunDetail />} />
         </Routes>
       </main>
     </div>

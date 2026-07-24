@@ -4,9 +4,16 @@ config({ path: '../../.env' });
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { prisma } from 'pre-release-checker-database';
-import { configSchema, CRAWL_JOB_NAME, runStatusSchema } from 'pre-release-checker-shared';
-import type { Config } from 'pre-release-checker-shared';
+import {
+  configSchema,
+  CRAWL_JOB_NAME,
+  runStatusSchema,
+  SCENARIO_JOB_NAME,
+  scenarioRunStatusSchema,
+} from 'pre-release-checker-shared';
+import type { Config, Scenario } from 'pre-release-checker-shared';
 import { runCrawl } from './crawler.js';
+import { runScenario } from './scenario-runner.js';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -18,19 +25,28 @@ interface CrawlJobData {
   configSnapshot: Config;
 }
 
+interface ScenarioJobData {
+  scenarioRunId: string;
+  scenarioId: string;
+  configSnapshot: Config;
+}
+
+const parsedConfig = (snapshot: unknown) =>
+  configSchema.omit({ id: true, createdAt: true, updatedAt: true }).parse(snapshot);
+
 async function main() {
-  const worker = new Worker(
+  const crawlWorker = new Worker(
     CRAWL_JOB_NAME,
     async (job) => {
       const { runId, baseUrl, configSnapshot } = job.data as CrawlJobData;
-      const parsedConfig = configSchema.omit({ id: true, createdAt: true, updatedAt: true }).parse(configSnapshot);
+      const config = parsedConfig(configSnapshot);
 
       await prisma.run.update({
         where: { id: runId },
         data: { status: runStatusSchema.Enum.running },
       });
 
-      const result = await runCrawl(runId, baseUrl, parsedConfig);
+      const result = await runCrawl(runId, baseUrl, config);
 
       await prisma.run.update({
         where: { id: runId },
@@ -47,11 +63,49 @@ async function main() {
     { connection, concurrency: Number(process.env.RUNNER_CONCURRENCY) || 2 }
   );
 
-  worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err);
+  const scenarioWorker = new Worker(
+    SCENARIO_JOB_NAME,
+    async (job) => {
+      const { scenarioRunId, scenarioId, configSnapshot } = job.data as ScenarioJobData;
+      const config = parsedConfig(configSnapshot);
+
+      const scenario = await prisma.scenario.findUnique({ where: { id: scenarioId } });
+      if (!scenario) throw new Error('Scenario not found');
+
+      await prisma.scenarioRun.update({
+        where: { id: scenarioRunId },
+        data: { status: scenarioRunStatusSchema.Enum.running },
+      });
+
+      const { result, error } = await runScenario(
+        { ...scenario, steps: JSON.parse(scenario.steps) } as unknown as Scenario,
+        scenarioRunId,
+        config
+      );
+
+      await prisma.scenarioRun.update({
+        where: { id: scenarioRunId },
+        data: {
+          status: error ? scenarioRunStatusSchema.Enum.failed : scenarioRunStatusSchema.Enum.completed,
+          finishedAt: new Date(),
+          result: JSON.stringify(result),
+          error: error ?? null,
+        },
+      });
+
+      if (error) throw new Error(error);
+    },
+    { connection, concurrency: Number(process.env.RUNNER_CONCURRENCY) || 2 }
+  );
+
+  crawlWorker.on('failed', (job, err) => {
+    console.error(`Crawl job ${job?.id} failed:`, err);
+  });
+  scenarioWorker.on('failed', (job, err) => {
+    console.error(`Scenario job ${job?.id} failed:`, err);
   });
 
-  console.log(`Runner started for queue "${CRAWL_JOB_NAME}"`);
+  console.log(`Runner started for queues "${CRAWL_JOB_NAME}" and "${SCENARIO_JOB_NAME}"`);
 }
 
 main().catch((err) => {
