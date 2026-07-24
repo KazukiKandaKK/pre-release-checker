@@ -3,6 +3,7 @@ import { LocalStorage } from 'pre-release-checker-storage';
 import type { CrawlConfig, Scenario, ScenarioRunResult, ScenarioRunStepResult, ScenarioStep } from 'pre-release-checker-shared';
 import { scenarioRunResultSchema } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl } from './guards.js';
+import { authenticateContext, performFormLogin } from './auth.js';
 
 interface ConsoleLog {
   level: string;
@@ -27,7 +28,12 @@ export async function runScenario(
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  await authenticateContext(context, config);
   const page = await context.newPage();
+
+  if (config.authType === 'password' && config.authLoginUrl) {
+    await performFormLogin(page, config);
+  }
 
   const consoleLogs: ConsoleLog[] = [];
   let hasJsError = false;

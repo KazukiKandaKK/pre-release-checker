@@ -4,6 +4,7 @@ import { LocalStorage } from 'pre-release-checker-storage';
 import type { CrawlConfig, PageSnapshot } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl, isExcluded, isSameOrigin } from './guards.js';
 import { generateScenariosFromPage } from './scenario-generator.js';
+import { authenticateContext, performFormLogin } from './auth.js';
 
 export interface CrawlResult {
   runId: string;
@@ -39,6 +40,13 @@ export async function runCrawl(
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
   });
+  await authenticateContext(context, config);
+
+  if (config.authType === 'password' && config.authLoginUrl) {
+    const loginPage = await context.newPage();
+    await performFormLogin(loginPage, config);
+    await loginPage.close();
+  }
 
   const pages: PageSnapshot[] = [];
   const visited = new Set<string>();

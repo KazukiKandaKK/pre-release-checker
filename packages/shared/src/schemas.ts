@@ -23,6 +23,8 @@ const commaSeparatedOriginsSchema = z
 
 const excludePatternsSchema = z.string().default('');
 
+export const authTypeSchema = z.enum(['none', 'cookie', 'basic', 'oauth', 'password']);
+
 export const configInputSchema = z.object({
   baseUrl: urlSchema,
   allowedOrigins: commaSeparatedOriginsSchema,
@@ -31,6 +33,15 @@ export const configInputSchema = z.object({
   delayMs: z.coerce.number().int().min(0).max(10000).default(DEFAULT_DELAY_MS),
   maxPages: z.coerce.number().int().min(1).max(200).default(DEFAULT_MAX_PAGES),
   excludePatterns: excludePatternsSchema,
+  authType: authTypeSchema.default('none'),
+  authLoginUrl: z.string().url().optional().or(z.literal('')),
+  authUsername: z.string().optional(),
+  authPassword: z.string().optional(),
+  authCookie: z.string().optional(),
+  authToken: z.string().optional(),
+  scheduleEnabled: z.coerce.boolean().default(false),
+  scheduleCron: z.string().default('0 9 * * *'),
+  scheduleJobType: z.enum(['crawl', 'scenarios']).default('crawl'),
 });
 
 export const configSchema = configInputSchema.extend({
