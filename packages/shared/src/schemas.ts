@@ -107,7 +107,7 @@ export const runStatusSchema = z.enum([
 
 export const findingSeveritySchema = z.enum(['Critical', 'High', 'Medium', 'Low']);
 
-export const findingCategorySchema = z.enum(['http', 'js', 'visual', 'scenario']);
+export const findingCategorySchema = z.enum(['http', 'js', 'visual', 'scenario', 'api']);
 
 export const findingSchema = z.object({
   category: findingCategorySchema,
@@ -281,4 +281,51 @@ export const scenarioRunSchema = z.object({
 
 export const createScenarioRunSchema = z.object({
   scenarioId: z.string(),
+});
+
+export const apiEndpointInputSchema = z.object({
+  name: z.string().min(1),
+  method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'),
+  url: z.string().url(),
+  headers: z.string().optional(),
+  body: z.string().optional(),
+  expectedStatus: z.coerce.number().int().min(100).max(599).optional(),
+  expectedContentType: z.string().optional(),
+  timeoutMs: z.coerce.number().int().min(1).max(60000).default(5000),
+});
+
+export const apiEndpointSchema = apiEndpointInputSchema.extend({
+  id: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export const apiTestRunStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const apiTestResultSchema = z.object({
+  endpointId: z.string(),
+  name: z.string(),
+  url: z.string(),
+  method: z.string(),
+  status: z.enum(['ok', 'failed', 'error']),
+  statusCode: z.number().int().nullable(),
+  responseTimeMs: z.number().int(),
+  contentType: z.string().nullable(),
+  error: z.string().optional(),
+});
+
+export const apiTestRunSchema = z.object({
+  id: z.string(),
+  status: apiTestRunStatusSchema,
+  endpoints: z.array(apiEndpointSchema),
+  results: z.array(apiTestResultSchema).nullable().optional(),
+  findings: z.array(findingSchema).nullable().optional(),
+  error: z.string().nullable().optional(),
+  startedAt: z.coerce.date(),
+  finishedAt: z.coerce.date().nullable().optional(),
 });
