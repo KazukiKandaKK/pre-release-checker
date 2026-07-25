@@ -84,7 +84,7 @@ export default function Home() {
             <label className="block text-sm font-medium mb-1">許可オリジン（カンマ区切り）</label>
             <input
               type="text"
-              required
+              placeholder="http://localhost:8080"
               className="w-full border rounded px-3 py-2"
               value={form.allowedOrigins}
               onChange={(e) => update('allowedOrigins', e.target.value)}

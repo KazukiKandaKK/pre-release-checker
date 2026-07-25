@@ -1,5 +1,15 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+function formatValidationErrors(details: unknown): string | undefined {
+  if (!details || typeof details !== 'object') return undefined;
+  const fieldErrors = (details as { fieldErrors?: Record<string, string[] | undefined> }).fieldErrors;
+  if (!fieldErrors) return undefined;
+  const lines = Object.entries(fieldErrors)
+    .map(([field, errors]) => `${field}: ${errors?.join(', ')}`)
+    .filter(Boolean);
+  return lines.length ? lines.join('; ') : undefined;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -7,7 +17,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `HTTP ${res.status}`);
+    const detail = body.message || formatValidationErrors(body.details) || `HTTP ${res.status}`;
+    throw new Error(detail);
   }
   return res.json();
 }

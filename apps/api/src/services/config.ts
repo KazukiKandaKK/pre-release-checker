@@ -47,9 +47,11 @@ export async function getConfig(): Promise<Config | null> {
 }
 
 export async function upsertConfig(input: ConfigInput): Promise<Config> {
+  const allowedOrigins =
+    input.allowedOrigins?.trim() || new URL(input.baseUrl).origin;
   const data = {
     baseUrl: input.baseUrl,
-    allowedOrigins: input.allowedOrigins,
+    allowedOrigins,
     maxDepth: input.maxDepth,
     concurrency: input.concurrency,
     delayMs: input.delayMs,

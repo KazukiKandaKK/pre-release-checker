@@ -10,14 +10,15 @@ export const urlSchema = z.string().url();
 
 const commaSeparatedOriginsSchema = z
   .string()
-  .min(1, '1 つ以上のオリジンを指定してください')
+  .default('')
   .refine(
-    (s) =>
-      s
+    (s) => {
+      const origins = s
         .split(',')
         .map((o) => o.trim())
-        .filter(Boolean)
-        .every((o) => /^https?:\/\/[^/]+/.test(o)),
+        .filter(Boolean);
+      return origins.length === 0 || origins.every((o) => /^https?:\/\/[^/]+/.test(o));
+    },
     'origin 形式で入力してください（カンマ区切り）'
   );
 
