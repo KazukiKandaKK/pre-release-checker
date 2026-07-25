@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api, type ApiEndpoint, type ApiEndpointForm, type ApiTestRun } from '../api/client.js';
 
+interface ImportPreview {
+  count: number;
+  baseUrl: string;
+  endpoints: ApiEndpoint[];
+}
+
 const defaultForm: ApiEndpointForm = {
   name: '',
   method: 'GET',
@@ -19,6 +25,11 @@ export default function ApiTests() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [selectedRun, setSelectedRun] = useState<ApiTestRun | null>(null);
+
+  const [importSpec, setImportSpec] = useState('');
+  const [importBaseUrl, setImportBaseUrl] = useState('');
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const load = async () => {
     try {
@@ -99,6 +110,102 @@ export default function ApiTests() {
   return (
     <div className="space-y-8">
       <h2 className="text-2xl font-semibold">API テスト</h2>
+
+      <div className="bg-white p-6 rounded shadow space-y-4">
+        <h3 className="text-lg font-medium">OpenAPI / Swagger インポート</h3>
+        <p className="text-sm text-gray-600">
+          JSON または YAML 形式の OpenAPI 3.x / Swagger 2.0 仕様書を貼り付けて、エンドポイントを一括登録できます。baseUrl が未指定の場合は仕様書内の servers / host を使用します。
+        </p>
+        <div className="col-span-2">
+          <label className="block text-sm font-medium mb-1">baseUrl（オプション）</label>
+          <input
+            type="url"
+            className="w-full border rounded px-3 py-2"
+            value={importBaseUrl}
+            onChange={(e) => setImportBaseUrl(e.target.value)}
+            placeholder="http://host.docker.internal:3000"
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-sm font-medium mb-1">仕様書（JSON or YAML）</label>
+          <textarea
+            rows={8}
+            className="w-full border rounded px-3 py-2 font-mono text-sm"
+            value={importSpec}
+            onChange={(e) => setImportSpec(e.target.value)}
+            placeholder={`openapi: 3.0.0\nservers:\n  - url: http://localhost:3000/api\npaths:\n  /users:\n    get:\n      operationId: listUsers`}
+          />
+        </div>
+        <div className="flex space-x-4">
+          <button
+            type="button"
+            disabled={!importSpec.trim() || importing}
+            onClick={async () => {
+              try {
+                setImporting(true);
+                const res = await api.importOpenApi({ spec: importSpec, baseUrl: importBaseUrl || undefined, dryRun: true });
+                setImportPreview(res);
+                setMessage(`${res.count} 件のエンドポイントを検出しました`);
+              } catch (err) {
+                setMessage(`プレビューエラー: ${err instanceof Error ? err.message : String(err)}`);
+                setImportPreview(null);
+              } finally {
+                setImporting(false);
+              }
+            }}
+            className="bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-600 disabled:opacity-50"
+          >
+            プレビュー
+          </button>
+          <button
+            type="button"
+            disabled={!importSpec.trim() || importing}
+            onClick={async () => {
+              try {
+                setImporting(true);
+                await api.importOpenApi({ spec: importSpec, baseUrl: importBaseUrl || undefined, dryRun: false });
+                setImportSpec('');
+                setImportBaseUrl('');
+                setImportPreview(null);
+                await load();
+                setMessage('インポートしました');
+              } catch (err) {
+                setMessage(`インポートエラー: ${err instanceof Error ? err.message : String(err)}`);
+              } finally {
+                setImporting(false);
+              }
+            }}
+            className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-500 disabled:opacity-50"
+          >
+            インポート
+          </button>
+        </div>
+        {importPreview && (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-700">
+              検出数: {importPreview.count} / baseUrl: {importPreview.baseUrl}
+            </p>
+            <table className="w-full text-sm border">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-1 px-2">名前</th>
+                  <th className="text-left py-1 px-2">メソッド</th>
+                  <th className="text-left py-1 px-2">URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.endpoints.map((ep, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="py-1 px-2">{ep.name}</td>
+                    <td className="py-1 px-2">{ep.method}</td>
+                    <td className="py-1 px-2 break-all">{ep.url}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <form onSubmit={submit} className="bg-white p-6 rounded shadow space-y-4">
         <h3 className="text-lg font-medium">エンドポイント {editingId ? '編集' : '追加'}</h3>

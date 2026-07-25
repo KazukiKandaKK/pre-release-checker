@@ -329,3 +329,15 @@ export const apiTestRunSchema = z.object({
   startedAt: z.coerce.date(),
   finishedAt: z.coerce.date().nullable().optional(),
 });
+
+export const openapiImportSchema = z.object({
+  spec: z.string().min(1),
+  baseUrl: z.string().url().optional(),
+  dryRun: z.coerce.boolean().default(false),
+});
+
+export const openapiImportResponseSchema = z.object({
+  count: z.number().int(),
+  baseUrl: z.string(),
+  endpoints: z.array(apiEndpointInputSchema),
+});
