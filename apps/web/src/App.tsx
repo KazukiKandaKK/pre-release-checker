@@ -5,6 +5,7 @@ import RunDetail from './pages/RunDetail.js';
 import Scenarios from './pages/Scenarios.js';
 import ScenarioDetail from './pages/ScenarioDetail.js';
 import ScenarioRunDetail from './pages/ScenarioRunDetail.js';
+import ScenarioForm from './pages/ScenarioForm.js';
 import ApiTests from './pages/ApiTests.js';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunDetail />} />
           <Route path="/scenarios" element={<Scenarios />} />
+          <Route path="/scenarios/new" element={<ScenarioForm />} />
           <Route path="/scenarios/:id" element={<ScenarioDetail />} />
           <Route path="/scenario-runs/:id" element={<ScenarioRunDetail />} />
           <Route path="/api-tests" element={<ApiTests />} />
