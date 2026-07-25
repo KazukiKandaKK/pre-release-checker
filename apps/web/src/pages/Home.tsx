@@ -27,6 +27,7 @@ const defaultForm: ConfigForm = {
   mailTo: '',
   mailPassword: '',
   visualDiffThreshold: 0.05,
+  spaClickDiscovery: false,
 };
 
 export default function Home() {
@@ -144,6 +145,17 @@ export default function Home() {
               value={form.excludePatterns}
               onChange={(e) => update('excludePatterns', e.target.value)}
             />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              id="spaClickDiscovery"
+              type="checkbox"
+              checked={form.spaClickDiscovery}
+              onChange={(e) => update('spaClickDiscovery', e.target.checked)}
+            />
+            <label htmlFor="spaClickDiscovery" className="text-sm font-medium">
+              SPA クリック発見（a[href] 以外のクリック可能要素も探索）
+            </label>
           </div>
         </div>
 

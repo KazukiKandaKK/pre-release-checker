@@ -3,6 +3,7 @@ import { prisma } from 'pre-release-checker-database';
 import { LocalStorage } from 'pre-release-checker-storage';
 import type { CrawlConfig, PageSnapshot } from 'pre-release-checker-shared';
 import { isAllowedStagingUrl, isExcluded, isSameOrigin } from './guards.js';
+import { discoverUrlsByClick } from './click-discovery.js';
 import { generateScenariosFromPage } from './scenario-generator.js';
 import { authenticateContext, performFormLogin } from './auth.js';
 import { buildPageFindings, computePageDiffs, markNewFindings } from './findings.js';
@@ -180,6 +181,19 @@ export async function runCrawl(
             depth + 1 <= maxDepth
           ) {
             queue.push({ url: link, depth: depth + 1 });
+          }
+        }
+
+        if (config.spaClickDiscovery) {
+          try {
+            const discovered = await discoverUrlsByClick(page, baseUrl, config, visited);
+            for (const url of discovered) {
+              if (!visited.has(url) && depth + 1 <= maxDepth) {
+                queue.push({ url, depth: depth + 1 });
+              }
+            }
+          } catch (err) {
+            console.error('click discovery failed for', url, err);
           }
         }
       }

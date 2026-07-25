@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAllowedStagingUrl, isExcluded, isSameOrigin } from './guards.js';
+import { isAllowedStagingUrl, isExcluded, isSameOrigin, isDangerousElementText } from './guards.js';
 import type { CrawlConfig } from 'pre-release-checker-shared';
 
 function makeConfig(overrides: Partial<CrawlConfig> = {}): CrawlConfig {
@@ -19,6 +19,7 @@ function makeConfig(overrides: Partial<CrawlConfig> = {}): CrawlConfig {
     mailPort: 587,
     mailSecure: false,
     visualDiffThreshold: 0.05,
+    spaClickDiscovery: false,
     ...overrides,
   };
 }
@@ -62,5 +63,18 @@ describe('isSameOrigin', () => {
 
   it('returns false for different origin', () => {
     expect(isSameOrigin('https://a.com', 'https://b.com')).toBe(false);
+  });
+});
+
+describe('isDangerousElementText', () => {
+  it('flags destructive keywords', () => {
+    expect(isDangerousElementText('Delete account')).toBe(true);
+    expect(isDangerousElementText('アカウント削除')).toBe(true);
+    expect(isDangerousElementText('ログアウト')).toBe(true);
+  });
+
+  it('allows safe labels', () => {
+    expect(isDangerousElementText('Dashboard')).toBe(false);
+    expect(isDangerousElementText('設定')).toBe(false);
   });
 });

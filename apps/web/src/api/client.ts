@@ -78,6 +78,7 @@ export interface ConfigView {
   mailTo?: string;
   mailPassword?: string;
   visualDiffThreshold: number;
+  spaClickDiscovery: boolean;
 }
 
 export interface ConfigForm {
@@ -106,6 +107,7 @@ export interface ConfigForm {
   mailTo?: string;
   mailPassword?: string;
   visualDiffThreshold: number;
+  spaClickDiscovery: boolean;
 }
 
 export interface Finding {

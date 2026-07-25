@@ -52,6 +52,7 @@ export const configInputSchema = z.object({
   mailTo: z.string().optional(),
   mailPassword: z.string().optional(),
   visualDiffThreshold: z.coerce.number().min(0).max(1).default(0.05),
+  spaClickDiscovery: z.coerce.boolean().default(false),
 });
 
 export const configSchema = configInputSchema.extend({

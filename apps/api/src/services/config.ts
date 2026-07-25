@@ -35,6 +35,7 @@ export function toConfig(row: NonNullable<DbConfig>): Config {
     mailTo: row.mailTo || undefined,
     mailPassword: row.mailPassword ? decrypt(row.mailPassword) : undefined,
     visualDiffThreshold: row.visualDiffThreshold,
+    spaClickDiscovery: row.spaClickDiscovery,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -75,6 +76,7 @@ export async function upsertConfig(input: ConfigInput): Promise<Config> {
     mailTo: input.mailTo || null,
     mailPassword: input.mailPassword ? encrypt(input.mailPassword) : null,
     visualDiffThreshold: input.visualDiffThreshold,
+    spaClickDiscovery: input.spaClickDiscovery,
   };
 
   const row = await prisma.config.upsert({
