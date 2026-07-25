@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { prisma } from 'pre-release-checker-database';
-import { LocalStorage } from 'pre-release-checker-storage';
 
 export const runsRouter = Router();
-
-const storage = new LocalStorage(process.env.STORAGE_LOCAL_PATH || '../../data/storage');
 
 function parseJsonField(value: string | null | undefined) {
   if (!value) return null;
@@ -65,11 +62,16 @@ runsRouter.get('/:id/pages', async (req, res, next) => {
 
 runsRouter.get('/:runId/pages/:pageId/screenshot', async (req, res, next) => {
   try {
-    const data = await storage.getScreenshot(req.params.runId, req.params.pageId);
-    if (!data) {
+    const page = await prisma.page.findUnique({
+      where: { id: req.params.pageId },
+      select: { screenshotPath: true },
+    });
+    if (!page || !page.screenshotPath) {
       res.status(404).json({ error: 'ScreenshotNotFound' });
       return;
     }
+    const fs = await import('node:fs/promises');
+    const data = await fs.readFile(page.screenshotPath);
     res.setHeader('Content-Type', 'image/png');
     res.send(data);
   } catch (err) {
