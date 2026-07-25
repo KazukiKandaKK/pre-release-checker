@@ -69,7 +69,7 @@ export async function runApiTest(endpoints: ApiEndpoint[]): Promise<ApiTestRunRe
           description: `Expected ${ep.expectedContentType}, got ${contentType ?? 'none'}`,
           isNew: true,
         });
-      } else if (statusCode >= 400) {
+      } else if (!ep.expectedStatus && statusCode >= 400) {
         status = 'failed';
         findings.push({
           category: 'api',

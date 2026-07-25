@@ -63,6 +63,27 @@ describe('runApiTest', () => {
     expect((init.headers as Record<string, string>).Accept).toBe('application/json');
   });
 
+  it('does not flag a matched non-2xx expectedStatus as an HTTP error', async () => {
+    vi.stubGlobal('fetch', mockFetchResponse(400, 'text/plain'));
+    // e.g. a WebSocket endpoint that correctly rejects a plain GET with 400.
+    const ep = makeEndpoint({ expectedStatus: 400, expectedContentType: 'text/plain' });
+
+    const { findings, results } = await runApiTest([ep]);
+
+    expect(findings).toHaveLength(0);
+    expect(results[0].status).toBe('ok');
+  });
+
+  it('still flags an unexpected 4xx when no expectedStatus is set', async () => {
+    vi.stubGlobal('fetch', mockFetchResponse(500, 'application/json'));
+    const ep = makeEndpoint();
+
+    const { findings } = await runApiTest([ep]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].title).toBe('API HTTP error: testEndpoint');
+  });
+
   it('does not override a user-supplied Accept header', async () => {
     const fetchMock = mockFetchResponse(200, 'application/json');
     vi.stubGlobal('fetch', fetchMock);
