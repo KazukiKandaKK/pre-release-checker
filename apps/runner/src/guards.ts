@@ -50,3 +50,24 @@ export function isSameOrigin(base: string, target: string): boolean {
   const targetOrigin = getOrigin(target);
   return baseOrigin !== null && baseOrigin === targetOrigin;
 }
+
+const DANGEROUS_TEXT_PATTERNS = [
+  'delete',
+  'remove',
+  'logout',
+  'signout',
+  'unsubscribe',
+  '購入',
+  '決済',
+  '支払',
+  '削除',
+  'ログアウト',
+  '退会',
+  '解約',
+  'アカウント削除',
+];
+
+export function isDangerousElementText(text: string): boolean {
+  const lower = text.toLowerCase();
+  return DANGEROUS_TEXT_PATTERNS.some((pattern) => lower.includes(pattern.toLowerCase()));
+}
