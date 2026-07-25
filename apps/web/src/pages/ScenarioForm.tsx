@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type ScenarioForm as ScenarioFormData, type ScenarioStep } from '../api/client.js';
 
@@ -535,7 +535,16 @@ function CoordinatePicker({ pageUrl, step, onChange }: CoordinatePickerProps) {
   const [preview, setPreview] = useState<{ screenshot: string; viewport: { width: number; height: number } } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [dragMode, setDragMode] = useState<'start' | 'end'>('start');
+  const [scale, setScale] = useState(1);
+  const [hover, setHover] = useState<{ x: number; y: number; rawX: number; rawY: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const dragStartRef = useRef<{ fromX: number; fromY: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fitAppliedRef = useRef(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const fetchPreview = async () => {
     if (!pageUrl) {
@@ -545,6 +554,8 @@ function CoordinatePicker({ pageUrl, step, onChange }: CoordinatePickerProps) {
     setLoading(true);
     setError('');
     setPreview(null);
+    setImageLoaded(false);
+    fitAppliedRef.current = false;
     try {
       const data = await api.getPreviewScreenshot(pageUrl);
       setPreview(data);
@@ -555,69 +566,319 @@ function CoordinatePicker({ pageUrl, step, onChange }: CoordinatePickerProps) {
     }
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+  useEffect(() => {
     if (!preview) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    const x = Math.round((offsetX / rect.width) * preview.viewport.width);
-    const y = Math.round((offsetY / rect.height) * preview.viewport.height);
+    setImageLoaded(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = preview.viewport.width;
+      canvas.height = preview.viewport.height;
+    }
+    const img = new Image();
+    img.onload = () => {
+      imageRef.current = img;
+      setImageLoaded(true);
+    };
+    img.src = `data:image/png;base64,${preview.screenshot}`;
+    return () => {
+      img.onload = null;
+    };
+  }, [preview]);
 
-    if (step.type === 'clickAt') {
-      onChange({ x, y });
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas && preview) {
+      canvas.style.width = `${preview.viewport.width * scale}px`;
+      canvas.style.height = `${preview.viewport.height * scale}px`;
+      canvas.style.imageRendering = 'pixelated';
+    }
+  }, [scale, preview]);
+
+  useEffect(() => {
+    if (!preview || !containerRef.current) return;
+    const el = containerRef.current;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update);
+      ro.observe(el);
+    }
+    window.addEventListener('resize', update);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [preview]);
+
+  useEffect(() => {
+    if (!preview || containerWidth === 0 || fitAppliedRef.current) return;
+    const fit = Math.min(1, (containerWidth - 24) / preview.viewport.width);
+    if (fit > 0) {
+      setScale(Math.max(0.25, Math.round(fit * 100) / 100));
+      fitAppliedRef.current = true;
+    }
+  }, [preview, containerWidth]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const image = imageRef.current;
+    if (!canvas || !image || !preview || !imageLoaded) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const drawMarker = (x: number, y: number, color: string, label: string) => {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = color;
+      ctx.fillText(label, x + 9, y - 9);
+      ctx.restore();
+    };
+
+    const drawArrow = (x1: number, y1: number, x2: number, y2: number, color: string) => {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const headLen = 10;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    // grid
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    for (let gx = 100; gx < preview.viewport.width; gx += 100) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, canvas.height);
+      ctx.stroke();
+    }
+    for (let gy = 100; gy < preview.viewport.height; gy += 100) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(canvas.width, gy);
+      ctx.stroke();
+    }
+
+    if (step.type === 'dragAt' && dragging && dragStartRef.current && hover) {
+      drawArrow(dragStartRef.current.fromX, dragStartRef.current.fromY, hover.x, hover.y, 'rgba(59,130,246,0.8)');
+      drawMarker(dragStartRef.current.fromX, dragStartRef.current.fromY, '#22c55e', '開始');
+      drawMarker(hover.x, hover.y, '#3b82f6', '終了');
+    } else if (step.type === 'clickAt') {
+      const x = step.x ?? 0;
+      const y = step.y ?? 0;
+      if (x !== 0 || y !== 0) drawMarker(x, y, '#ef4444', 'クリック');
     } else if (step.type === 'dragAt') {
-      if (dragMode === 'start') {
-        onChange({ fromX: x, fromY: y });
-      } else {
-        onChange({ toX: x, toY: y });
+      const fromX = step.fromX ?? 0;
+      const fromY = step.fromY ?? 0;
+      const toX = step.toX ?? 0;
+      const toY = step.toY ?? 0;
+      if (fromX !== 0 || fromY !== 0 || toX !== 0 || toY !== 0) {
+        drawArrow(fromX, fromY, toX, toY, 'rgba(59,130,246,0.8)');
+        drawMarker(fromX, fromY, '#22c55e', '開始');
+        drawMarker(toX, toY, '#3b82f6', '終了');
       }
+    }
+
+    if (hover) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(239,68,68,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(hover.x, 0);
+      ctx.lineTo(hover.x, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, hover.y);
+      ctx.lineTo(canvas.width, hover.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(239,68,68,0.9)';
+      ctx.beginPath();
+      ctx.arc(hover.x, hover.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }, [preview, imageLoaded, hover, scale, step, dragging]);
+
+  const toModel = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !preview) return { x: 0, y: 0, rawX: 0, rawY: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const rawX = clientX - rect.left;
+    const rawY = clientY - rect.top;
+    const x = Math.max(0, Math.min(preview.viewport.width, Math.round((rawX / rect.width) * preview.viewport.width)));
+    const y = Math.max(0, Math.min(preview.viewport.height, Math.round((rawY / rect.height) * preview.viewport.height)));
+    return { x, y, rawX, rawY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y, rawX, rawY } = toModel(e.clientX, e.clientY);
+    setHover({ x, y, rawX, rawY });
+  };
+
+  const handleMouseLeave = () => {
+    setHover(null);
+    if (dragging) {
+      setDragging(false);
+      dragStartRef.current = null;
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (step.type !== 'dragAt') return;
+    const { x, y, rawX, rawY } = toModel(e.clientX, e.clientY);
+    setHover({ x, y, rawX, rawY });
+    dragStartRef.current = { fromX: x, fromY: y };
+    setDragging(true);
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = toModel(e.clientX, e.clientY);
+    if (step.type === 'clickAt') {
+      onChange({ x, y });
+    } else if (step.type === 'dragAt' && dragging && dragStartRef.current) {
+      onChange({
+        fromX: dragStartRef.current.fromX,
+        fromY: dragStartRef.current.fromY,
+        toX: x,
+        toY: y,
+      });
+      setDragging(false);
+      dragStartRef.current = null;
+    }
+  };
+
+  const reset = () => {
+    if (step.type === 'clickAt') {
+      onChange({ x: 0, y: 0 });
+    } else if (step.type === 'dragAt') {
+      onChange({ fromX: 0, fromY: 0, toX: 0, toY: 0 });
+      setDragging(false);
+      dragStartRef.current = null;
+    }
+  };
+
+  const scales = [0.75, 1, 1.5, 2];
+
   return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        onClick={fetchPreview}
-        disabled={loading}
-        className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-500 disabled:opacity-50"
-      >
-        {loading ? '取得中...' : 'スクリーンショットを取得'}
-      </button>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={fetchPreview}
+          disabled={loading}
+          className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-500 disabled:opacity-50"
+        >
+          {loading ? '取得中...' : preview ? 'プレビュー再取得' : 'スクリーンショットを取得'}
+        </button>
+        {preview && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-600">拡大:</span>
+            {scales.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setScale(s)}
+                className={`px-2 py-0.5 rounded text-xs ${scale === s ? 'bg-emerald-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                fitAppliedRef.current = true;
+                const fit = preview ? Math.min(1, (containerWidth - 24) / preview.viewport.width) : 1;
+                setScale(Math.max(0.25, Math.round(fit * 100) / 100));
+              }}
+              className="px-2 py-0.5 rounded text-xs bg-gray-200 hover:bg-gray-300"
+            >
+              全体表示
+            </button>
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
+
       {preview && (
         <div className="space-y-2">
-          {step.type === 'dragAt' && (
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => setDragMode('start')}
-                className={`px-2 py-1 rounded text-sm ${dragMode === 'start' ? 'bg-emerald-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
-              >
-                開始点を設定
-              </button>
-              <button
-                type="button"
-                onClick={() => setDragMode('end')}
-                className={`px-2 py-1 rounded text-sm ${dragMode === 'end' ? 'bg-emerald-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
-              >
-                終了点を設定
-              </button>
-              <span className="text-sm text-gray-600">
-                次のクリック: {dragMode === 'start' ? '開始点' : '終了点'}
+          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-700">
+            <span>
+              カーソル: <strong>{hover ? `(${hover.x}, ${hover.y})` : '-'}</strong>
+            </span>
+            {step.type === 'clickAt' && (
+              <span>
+                クリック位置: <strong>({step.x ?? 0}, {step.y ?? 0})</strong>
               </span>
-            </div>
-          )}
-          <p className="text-sm text-gray-600">
-            画像をクリックして座標を設定（{preview.viewport.width}x{preview.viewport.height}）
+            )}
+            {step.type === 'dragAt' && (
+              <span>
+                ドラッグ: <strong>({step.fromX ?? 0}, {step.fromY ?? 0}) → ({step.toX ?? 0}, {step.toY ?? 0})</strong>
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-600">
+            {step.type === 'dragAt'
+              ? '画像上でドラッグ（開始点から終了点へ）してドラッグを指定'
+              : '画像をクリックして座標を指定'}
+            （{preview.viewport.width}x{preview.viewport.height}）
           </p>
-          <img
-            src={`data:image/png;base64,${preview.screenshot}`}
-            alt="preview"
-            onClick={handleImageClick}
-            className="max-w-full border cursor-crosshair"
-          />
+
+          <div ref={containerRef} className="relative border rounded overflow-auto max-h-[80vh] bg-gray-50">
+            <canvas
+              ref={canvasRef}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              className="block cursor-crosshair"
+            />
+            {hover && (
+              <div
+                className="absolute pointer-events-none bg-black/80 text-white text-xs px-2 py-1 rounded z-10"
+                style={{ left: hover.rawX + 10, top: hover.rawY - 24 }}
+              >
+                ({hover.x}, {hover.y})
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={reset}
+            className="text-sm text-red-600 hover:underline"
+          >
+            座標をリセット
+          </button>
         </div>
       )}
     </div>
