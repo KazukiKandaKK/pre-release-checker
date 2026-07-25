@@ -20,6 +20,7 @@
     "pre-release-checker-database": "*",
     "pre-release-checker-shared": "*",
     "pre-release-checker-storage": "*",
+    "yaml": "^2.4.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

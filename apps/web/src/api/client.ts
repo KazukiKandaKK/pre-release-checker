@@ -47,6 +47,8 @@ export const api = {
   getApiTestRuns: () => request<ApiTestRun[]>('/api/api-test-runs'),
   getApiTestRun: (id: string) => request<ApiTestRun>(`/api/api-test-runs/${id}`),
   startApiTest: () => request<{ apiTestRunId: string; jobId: string }>('/api/api-test-runs', { method: 'POST' }),
+  importOpenApi: (body: { spec: string; baseUrl?: string; dryRun?: boolean }) =>
+    request<{ count: number; baseUrl: string; endpoints: ApiEndpoint[] }>('/api/api-endpoints/import-openapi', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 export interface ConfigView {
@@ -107,7 +109,7 @@ export interface ConfigForm {
 }
 
 export interface Finding {
-  category: 'http' | 'js' | 'visual' | 'scenario';
+  category: 'http' | 'js' | 'visual' | 'scenario' | 'api';
   severity: 'Critical' | 'High' | 'Medium' | 'Low';
   title: string;
   url?: string;
@@ -254,4 +256,10 @@ export interface ApiTestRun {
   error?: string;
   startedAt: string;
   finishedAt?: string;
+}
+
+export interface OpenApiImportResponse {
+  count: number;
+  baseUrl: string;
+  endpoints: ApiEndpoint[];
 }

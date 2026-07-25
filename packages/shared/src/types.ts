@@ -23,3 +23,5 @@ export type ApiEndpoint = z.infer<typeof schemas.apiEndpointSchema>;
 export type ApiTestRunStatus = z.infer<typeof schemas.apiTestRunStatusSchema>;
 export type ApiTestResult = z.infer<typeof schemas.apiTestResultSchema>;
 export type ApiTestRun = z.infer<typeof schemas.apiTestRunSchema>;
+export type OpenApiImportInput = z.infer<typeof schemas.openapiImportSchema>;
+export type OpenApiImportResponse = z.infer<typeof schemas.openapiImportResponseSchema>;
