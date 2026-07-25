@@ -31,9 +31,13 @@ export async function runApiTest(endpoints: ApiEndpoint[]): Promise<ApiTestRunRe
     let fetchError: string | undefined;
     let status: ApiTestResult['status'] = 'ok';
 
+    const userHeaders: Record<string, string> = ep.headers ? (JSON.parse(ep.headers) as Record<string, string>) : {};
+    const hasAcceptHeader = Object.keys(userHeaders).some((key) => key.toLowerCase() === 'accept');
     const init: RequestInit = {
       method: ep.method,
-      headers: ep.headers ? (JSON.parse(ep.headers) as Record<string, string>) : {},
+      headers: hasAcceptHeader || !ep.expectedContentType
+        ? userHeaders
+        : { Accept: ep.expectedContentType, ...userHeaders },
       body: ep.body || undefined,
     };
 
@@ -43,7 +47,9 @@ export async function runApiTest(endpoints: ApiEndpoint[]): Promise<ApiTestRunRe
       contentType = res.headers.get('content-type');
       const duration = Date.now() - start;
 
-      if (ep.expectedStatus !== undefined && statusCode !== ep.expectedStatus) {
+      // expectedStatus comes back as `null` (not `undefined`) once persisted through Prisma,
+      // so a truthy check (min status is 100, so 0/falsy never a real expectation) is used here.
+      if (ep.expectedStatus && statusCode !== ep.expectedStatus) {
         status = 'failed';
         findings.push({
           category: 'api',
