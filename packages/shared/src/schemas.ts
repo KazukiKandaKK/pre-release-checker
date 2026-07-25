@@ -225,6 +225,25 @@ export const scenarioStepSchema = z.discriminatedUnion('type', [
     durationMs: z.coerce.number().int().min(0).max(60000).default(1000),
     label: z.string().optional(),
   }),
+  z.object({
+    type: z.literal('clickAt'),
+    x: z.coerce.number().int(),
+    y: z.coerce.number().int(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('typeText'),
+    text: z.string(),
+    label: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('dragAt'),
+    fromX: z.coerce.number().int(),
+    fromY: z.coerce.number().int(),
+    toX: z.coerce.number().int(),
+    toY: z.coerce.number().int(),
+    label: z.string().optional(),
+  }),
 ]);
 
 export const scenarioInputSchema = z.object({

@@ -39,6 +39,7 @@ export const api = {
   runScenario: (id: string) => request<{ scenarioRunId: string; jobId: string }>(`/api/scenarios/${id}/run`, { method: 'POST' }),
   getScenarioRun: (id: string) => request<ScenarioRun & { scenario: Scenario }>(`/api/scenario-runs/${id}`),
   getScenarioStepScreenshotUrl: (runId: string, stepIndex: number) => `${API_BASE}/api/scenario-runs/${runId}/screenshots/${stepIndex}`,
+  getPreviewScreenshot: (url: string) => request<{ screenshot: string; viewport: { width: number; height: number } }>('/api/preview-screenshot', { method: 'POST', body: JSON.stringify({ url }) }),
 
   getApiEndpoints: () => request<ApiEndpoint[]>('/api/api-endpoints'),
   createApiEndpoint: (body: ApiEndpointForm) => request<ApiEndpoint>('/api/api-endpoints', { method: 'POST', body: JSON.stringify(body) }),
@@ -173,11 +174,17 @@ export interface ScenarioForm {
 }
 
 export interface ScenarioStep {
-  type: 'navigate' | 'fill' | 'select' | 'click' | 'submit' | 'assertText' | 'reload' | 'goBack' | 'goForward' | 'rapidClick' | 'clear' | 'wait';
+  type: 'navigate' | 'fill' | 'select' | 'click' | 'submit' | 'assertText' | 'reload' | 'goBack' | 'goForward' | 'rapidClick' | 'clear' | 'wait' | 'clickAt' | 'typeText' | 'dragAt';
   url?: string;
   selector?: string;
   value?: string;
   text?: string;
+  x?: number;
+  y?: number;
+  fromX?: number;
+  fromY?: number;
+  toX?: number;
+  toY?: number;
   operator?: 'contains' | 'exists';
   times?: number;
   durationMs?: number;

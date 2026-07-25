@@ -66,6 +66,12 @@ function StepDescription({ step }: { step: ScenarioStep }) {
       return <span>選択: {step.label || step.selector} = {step.value}</span>;
     case 'click':
       return <span>クリック: {step.label || step.selector}</span>;
+    case 'clickAt':
+      return <span>クリック（座標）: ({step.x}, {step.y}) {step.label}</span>;
+    case 'typeText':
+      return <span>キー入力: "{step.text}" {step.label}</span>;
+    case 'dragAt':
+      return <span>ドラッグ（座標）: ({step.fromX}, {step.fromY}) → ({step.toX}, {step.toY}) {step.label}</span>;
     case 'submit':
       return <span>送信: {step.label || step.selector}</span>;
     case 'assertText':
