@@ -39,6 +39,8 @@ services:
       - "3001:3001"
     volumes:
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -56,6 +58,8 @@ services:
       REDIS_URL: redis://redis:6379
     volumes:
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       migrate:
         condition: service_completed_successfully
