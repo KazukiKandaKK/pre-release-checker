@@ -194,6 +194,18 @@ async function executeStep(
       case 'wait':
         await new Promise((resolve) => setTimeout(resolve, step.durationMs));
         break;
+      case 'clickAt':
+        await page.mouse.click(step.x, step.y);
+        break;
+      case 'typeText':
+        await page.keyboard.type(step.text);
+        break;
+      case 'dragAt':
+        await page.mouse.move(step.fromX, step.fromY);
+        await page.mouse.down();
+        await page.mouse.move(step.toX, step.toY);
+        await page.mouse.up();
+        break;
       default:
         break;
     }

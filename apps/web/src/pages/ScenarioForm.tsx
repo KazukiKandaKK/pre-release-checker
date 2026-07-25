@@ -7,6 +7,9 @@ const STEP_TYPES: ScenarioStep['type'][] = [
   'fill',
   'select',
   'click',
+  'clickAt',
+  'typeText',
+  'dragAt',
   'submit',
   'assertText',
   'reload',
@@ -21,7 +24,10 @@ const TYPE_LABELS: Record<ScenarioStep['type'], string> = {
   navigate: 'ページ遷移',
   fill: '入力',
   select: '選択',
-  click: 'クリック',
+  click: 'クリック（CSS）',
+  clickAt: 'クリック（座標）',
+  typeText: 'キー入力',
+  dragAt: 'ドラッグ（座標）',
   submit: '送信',
   assertText: 'テキスト確認',
   reload: 'リロード',
@@ -42,6 +48,12 @@ function defaultStep(type: ScenarioStep['type']): ScenarioStep {
       return { type, selector: '', value: '', label: '' };
     case 'click':
       return { type, selector: '', label: '' };
+    case 'clickAt':
+      return { type, x: 0, y: 0, label: '' };
+    case 'typeText':
+      return { type, text: '', label: '' };
+    case 'dragAt':
+      return { type, fromX: 0, fromY: 0, toX: 0, toY: 0, label: '' };
     case 'submit':
       return { type, selector: '', label: '' };
     case 'assertText':
@@ -217,6 +229,7 @@ export default function ScenarioForm() {
               index={index}
               step={step}
               total={form.steps.length}
+              pageUrl={form.pageUrl}
               updateStep={updateStep}
               changeStepType={changeStepType}
               addStep={addStep}
@@ -251,6 +264,7 @@ interface StepEditorProps {
   index: number;
   step: ScenarioStep;
   total: number;
+  pageUrl: string;
   updateStep: (index: number, patch: Partial<ScenarioStep>) => void;
   changeStepType: (index: number, type: ScenarioStep['type']) => void;
   addStep: (index: number) => void;
@@ -262,6 +276,7 @@ function StepEditor({
   index,
   step,
   total,
+  pageUrl,
   updateStep,
   changeStepType,
   addStep,
@@ -366,6 +381,94 @@ function StepEditor({
         </div>
       )}
 
+      {step.type === 'clickAt' && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">X</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.x ?? 0}
+                onChange={(e) => updateStep(index, { x: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Y</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.y ?? 0}
+                onChange={(e) => updateStep(index, { y: Number(e.target.value) })}
+                required
+              />
+            </div>
+          </div>
+          <CoordinatePicker pageUrl={pageUrl} step={step} onChange={(patch) => updateStep(index, patch)} />
+        </>
+      )}
+
+      {step.type === 'typeText' && (
+        <div>
+          <label className="block text-sm font-medium mb-1">入力テキスト *</label>
+          <input
+            className="w-full border rounded px-3 py-2 text-sm"
+            value={step.text || ''}
+            onChange={(e) => updateStep(index, { text: e.target.value })}
+            required
+          />
+        </div>
+      )}
+
+      {step.type === 'dragAt' && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">開始 X</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.fromX ?? 0}
+                onChange={(e) => updateStep(index, { fromX: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">開始 Y</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.fromY ?? 0}
+                onChange={(e) => updateStep(index, { fromY: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">終了 X</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.toX ?? 0}
+                onChange={(e) => updateStep(index, { toX: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">終了 Y</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={step.toY ?? 0}
+                onChange={(e) => updateStep(index, { toY: Number(e.target.value) })}
+                required
+              />
+            </div>
+          </div>
+          <CoordinatePicker pageUrl={pageUrl} step={step} onChange={(patch) => updateStep(index, patch)} />
+        </>
+      )}
+
       {step.type === 'assertText' && (
         <>
           <div>
@@ -415,6 +518,105 @@ function StepEditor({
             className="w-full border rounded px-3 py-2 text-sm"
             value={step.durationMs ?? 1000}
             onChange={(e) => updateStep(index, { durationMs: Number(e.target.value) })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CoordinatePickerProps {
+  pageUrl: string;
+  step: ScenarioStep;
+  onChange: (patch: Partial<ScenarioStep>) => void;
+}
+
+function CoordinatePicker({ pageUrl, step, onChange }: CoordinatePickerProps) {
+  const [preview, setPreview] = useState<{ screenshot: string; viewport: { width: number; height: number } } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [dragMode, setDragMode] = useState<'start' | 'end'>('start');
+
+  const fetchPreview = async () => {
+    if (!pageUrl) {
+      setError('ページ URL を入力してください');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setPreview(null);
+    try {
+      const data = await api.getPreviewScreenshot(pageUrl);
+      setPreview(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'スクリーンショットの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!preview) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    const x = Math.round((offsetX / rect.width) * preview.viewport.width);
+    const y = Math.round((offsetY / rect.height) * preview.viewport.height);
+
+    if (step.type === 'clickAt') {
+      onChange({ x, y });
+    } else if (step.type === 'dragAt') {
+      if (dragMode === 'start') {
+        onChange({ fromX: x, fromY: y });
+      } else {
+        onChange({ toX: x, toY: y });
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={fetchPreview}
+        disabled={loading}
+        className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-500 disabled:opacity-50"
+      >
+        {loading ? '取得中...' : 'スクリーンショットを取得'}
+      </button>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {preview && (
+        <div className="space-y-2">
+          {step.type === 'dragAt' && (
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setDragMode('start')}
+                className={`px-2 py-1 rounded text-sm ${dragMode === 'start' ? 'bg-emerald-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+              >
+                開始点を設定
+              </button>
+              <button
+                type="button"
+                onClick={() => setDragMode('end')}
+                className={`px-2 py-1 rounded text-sm ${dragMode === 'end' ? 'bg-emerald-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+              >
+                終了点を設定
+              </button>
+              <span className="text-sm text-gray-600">
+                次のクリック: {dragMode === 'start' ? '開始点' : '終了点'}
+              </span>
+            </div>
+          )}
+          <p className="text-sm text-gray-600">
+            画像をクリックして座標を設定（{preview.viewport.width}x{preview.viewport.height}）
+          </p>
+          <img
+            src={`data:image/png;base64,${preview.screenshot}`}
+            alt="preview"
+            onClick={handleImageClick}
+            className="max-w-full border cursor-crosshair"
           />
         </div>
       )}
