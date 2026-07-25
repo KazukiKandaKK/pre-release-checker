@@ -39,6 +39,14 @@ export const api = {
   runScenario: (id: string) => request<{ scenarioRunId: string; jobId: string }>(`/api/scenarios/${id}/run`, { method: 'POST' }),
   getScenarioRun: (id: string) => request<ScenarioRun & { scenario: Scenario }>(`/api/scenario-runs/${id}`),
   getScenarioStepScreenshotUrl: (runId: string, stepIndex: number) => `${API_BASE}/api/scenario-runs/${runId}/screenshots/${stepIndex}`,
+
+  getApiEndpoints: () => request<ApiEndpoint[]>('/api/api-endpoints'),
+  createApiEndpoint: (body: ApiEndpointForm) => request<ApiEndpoint>('/api/api-endpoints', { method: 'POST', body: JSON.stringify(body) }),
+  updateApiEndpoint: (id: string, body: ApiEndpointForm) => request<ApiEndpoint>(`/api/api-endpoints/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteApiEndpoint: (id: string) => request<void>(`/api/api-endpoints/${id}`, { method: 'DELETE' }),
+  getApiTestRuns: () => request<ApiTestRun[]>('/api/api-test-runs'),
+  getApiTestRun: (id: string) => request<ApiTestRun>(`/api/api-test-runs/${id}`),
+  startApiTest: () => request<{ apiTestRunId: string; jobId: string }>('/api/api-test-runs', { method: 'POST' }),
 };
 
 export interface ConfigView {
@@ -198,4 +206,52 @@ export interface ScenarioRunStepResult {
   screenshotPath?: string | null;
   error?: string;
   durationMs?: number;
+}
+
+export interface ApiEndpoint {
+  id: string;
+  name: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  url: string;
+  headers?: string;
+  body?: string;
+  expectedStatus?: number;
+  expectedContentType?: string;
+  timeoutMs: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiEndpointForm {
+  name: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  url: string;
+  headers?: string;
+  body?: string;
+  expectedStatus?: number;
+  expectedContentType?: string;
+  timeoutMs: number;
+}
+
+export interface ApiTestResult {
+  endpointId: string;
+  name: string;
+  url: string;
+  method: string;
+  status: 'ok' | 'failed' | 'error';
+  statusCode: number | null;
+  responseTimeMs: number;
+  contentType: string | null;
+  error?: string;
+}
+
+export interface ApiTestRun {
+  id: string;
+  status: string;
+  endpoints: ApiEndpoint[];
+  results?: ApiTestResult[] | null;
+  findings?: Finding[] | null;
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
 }

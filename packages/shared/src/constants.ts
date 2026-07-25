@@ -1,5 +1,6 @@
 export const CRAWL_JOB_NAME = 'crawl';
 export const SCENARIO_JOB_NAME = 'scenario';
+export const API_TEST_JOB_NAME = 'api-test';
 
 export const DEFAULT_MAX_DEPTH = 2;
 export const DEFAULT_CONCURRENCY = 2;

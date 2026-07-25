@@ -104,3 +104,28 @@ model ScenarioRun {
 
   @@index([scenarioId])
 }
+
+model ApiEndpoint {
+  id                String  @id @default(cuid())
+  name              String
+  method            String  @default("GET")
+  url               String
+  headers           String? // JSON
+  body              String?
+  expectedStatus    Int?
+  expectedContentType String?
+  timeoutMs         Int     @default(5000)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ApiTestRun {
+  id          String    @id @default(cuid())
+  status      String
+  endpoints   String    // JSON snapshot
+  results     String?   // JSON
+  findings    String?   // JSON
+  error       String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+}

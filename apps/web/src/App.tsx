@@ -5,6 +5,7 @@ import RunDetail from './pages/RunDetail.js';
 import Scenarios from './pages/Scenarios.js';
 import ScenarioDetail from './pages/ScenarioDetail.js';
 import ScenarioRunDetail from './pages/ScenarioRunDetail.js';
+import ApiTests from './pages/ApiTests.js';
 
 function App() {
   return (
@@ -22,6 +23,9 @@ function App() {
             <Link to="/scenarios" className="hover:underline">
               シナリオ
             </Link>
+            <Link to="/api-tests" className="hover:underline">
+              API テスト
+            </Link>
           </nav>
         </div>
       </header>
@@ -33,6 +37,7 @@ function App() {
           <Route path="/scenarios" element={<Scenarios />} />
           <Route path="/scenarios/:id" element={<ScenarioDetail />} />
           <Route path="/scenario-runs/:id" element={<ScenarioRunDetail />} />
+          <Route path="/api-tests" element={<ApiTests />} />
         </Routes>
       </main>
     </div>
