@@ -21,7 +21,15 @@ export default function Scenarios() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">シナリオ一覧</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-semibold">シナリオ一覧</h2>
+        <Link
+          to="/scenarios/new"
+          className="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-500"
+        >
+          新規作成
+        </Link>
+      </div>
       {message && <p className="text-sm text-gray-700 mb-4">{message}</p>}
       <div className="space-y-4">
         {scenarios.map((scenario) => (
